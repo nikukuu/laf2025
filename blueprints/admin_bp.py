@@ -1,37 +1,38 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, session, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, session, request, current_app, send_file
 import mysql.connector
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
+import random
+import string
+from captcha.image import ImageCaptcha
+import sys
+import os
+
+
+
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates')
 
+   
 # Database connection function
 def get_db_connection():
     try:
         connection = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='',
-            database='lafsample'
+            host='sql12.freesqldatabase.com',
+            user='sql12752537',
+            password='HmcHn7eXlU',
+            database='sql12752537'
         )
         return connection
     except mysql.connector.Error as e:
         print(f"Error connecting to database: {e}")
         return None
-    
-def log_activity(admin_username, action):
-    connection = get_db_connection()
-    cursor = connection.cursor()
 
-    query = "INSERT INTO activity_logs (admin_username, action) VALUES (%s, %s)"
-    cursor.execute(query, (admin_username, action))
-
-    connection.commit()
-    cursor.close()
-    connection.close()
-
+# Helper: Generate CAPTCHA text
+def generate_captcha_text(length=5):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 #----------------------------ADMIN---LOGIN------------------------------------------------------------------------
 
@@ -40,27 +41,36 @@ def admin_login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        captcha_input = request.form['captcha']
 
-        # Connect to the database
+        if captcha_input.upper() != session.get('captcha_text', ''):
+            flash('Invalid CAPTCHA', 'danger')
+            return redirect(url_for('admin.admin_login'))
+
         connection = get_db_connection()
         cursor = connection.cursor()
-
-        # Query the admin credentials
         cursor.execute("SELECT username, password FROM admin_info WHERE id = 1")
-        admin = cursor.fetchone()  # Fetch the first row (since only one admin exists)
+        admin = cursor.fetchone()
         cursor.close()
         connection.close()
 
         if admin and admin[0] == username and check_password_hash(admin[1], password):
             session['admin_logged_in'] = True
-            session['admin_username'] = username
-            log_activity(username, "Logged in")  # <- Add this line
             return redirect(url_for('admin.admin_dashboard'))
-
         else:
             flash('Invalid username or password', 'danger')
 
+    session['captcha_text'] = generate_captcha_text()
     return render_template('admin_login.html')
+
+# CAPTCHA image route
+@admin_bp.route('/admin_login/captcha')
+def captcha_image():
+    image = ImageCaptcha()
+    captcha_text = session.get('captcha_text', '')
+    data = image.generate(captcha_text)
+    return send_file(data, mimetype='image/png')
+
 
 @admin_bp.route('/logout')
 def logout():
@@ -234,8 +244,6 @@ def admin_post():
         cursor.close()
         connection.close()
 
-        log_activity(session['admin_username'], f"Posted new item: {item_name}")
-
         success_message = "Post Item successfully published."
 
     return render_template('admin_post.html', success_message=success_message)
@@ -243,33 +251,23 @@ def admin_post():
 @admin_bp.route('/admin_items')
 def admin_items():
     if not session.get('admin_logged_in'):
-        return redirect(url_for('admin.admin_login'))
-
-    status_filter = request.args.get('status')  # Get status from query string
+        return redirect(url_for('admin_login'))
 
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    if status_filter in ['published', 'claimed']:
-        cursor.execute("""
-            SELECT id, date_found, item_name, description, status 
-            FROM items 
-            WHERE status = %s 
-            ORDER BY date_found DESC, id ASC
-        """, (status_filter,))
-    else:
-        cursor.execute("""
-            SELECT id, date_found, item_name, description, status 
-            FROM items 
-            ORDER BY date_found DESC, id ASC
-        """)
-
+    # Fetch all items, ordering by date_created in descending order (latest first)
+    cursor.execute("""
+        SELECT id, date_found, item_name, description, status 
+        FROM items 
+        ORDER BY date_found DESC, id ASC
+    """)
     items = cursor.fetchall()
+
     cursor.close()
     connection.close()
 
-    return render_template('admin_items.html', items=items, selected_status=status_filter)
-
+    return render_template('admin_items.html', items=items)
 
 @admin_bp.route('/admin/claims')
 def admin_claims():
@@ -329,8 +327,6 @@ def confirm_claim(claim_id):
                 (default_description, item_id)
             )
 
-            log_activity(session['admin_username'], f"Confirmed claim ID {claim_id} and marked item ID {item_id} as claimed.")
-
             # Commit the changes to the database
             connection.commit()
             flash('Claim confirmed successfully!', 'success')
@@ -363,8 +359,6 @@ def delete_claim(claim_id):
     cursor.close()
     connection.close()
 
-    log_activity(session['admin_username'], f"Deleted claim ID {claim_id}")
-
     flash(f"Claim ID {claim_id} has been successfully deleted.", 'success')
     return redirect(url_for('admin.admin_claims'))
 
@@ -392,9 +386,6 @@ def edit_item(item_id):
 
         cursor.close() 
         connection.close()
-
-        log_activity(session['admin_username'], f"Edited item ID {item_id}")
-        
         flash('Item updated successfully!', 'success')
         return redirect(url_for('admin.admin_items'))
 
@@ -432,23 +423,4 @@ def delete_item(item_id):
         cursor.close()
         connection.close()
 
-        log_activity(session['admin_username'], f"Deleted item ID {item_id}")
-
     return redirect(url_for('admin.admin_items'))
-
-
-#------------------------Activity Logs---------------------------------
-
-@admin_bp.route('/admin_logs')
-def admin_logs():
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin.admin_login'))
-
-    connection = get_db_connection()
-    cursor = connection.cursor()
-    cursor.execute("SELECT admin_username, action, timestamp FROM activity_logs ORDER BY timestamp DESC")
-    logs = cursor.fetchall()
-    cursor.close()
-    connection.close()
-
-    return render_template('admin_logs.html', logs=logs)
