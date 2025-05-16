@@ -15,10 +15,10 @@ admin_bp = Blueprint('admin', __name__, template_folder='../templates')
 def get_db_connection():
     try:
         connection = mysql.connector.connect(
-            host='pg0dj.h.filess.io',
-            user='laf2025_woodenpony',
-            password='832102598754a68e4a4352ae853102659aa5fe49',
-            database='laf2025_woodenpony',
+            host='3y7pu.h.filess.io',
+            user='laf2025_couplewent',
+            password='b4db8ac094f3b4f08e3e97af326b0ec0ed2bf217',
+            database='laf2025_couplewent',
             port='3307'
         )
         return connection
