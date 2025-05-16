@@ -897,4 +897,3 @@ def delete_item(item_id):
         connection.close()
 
     return redirect(url_for('admin.admin_items'))
->>>>>>> 7207f585297aa4fbd325543a1e0b42aa77241a6f
