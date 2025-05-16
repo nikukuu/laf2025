@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from flask import Blueprint, render_template, redirect, url_for, flash, session, request, current_app, send_file
 import mysql.connector
 from werkzeug.security import check_password_hash, generate_password_hash
