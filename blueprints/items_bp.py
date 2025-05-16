@@ -6,10 +6,11 @@ items_bp = Blueprint('items', __name__, template_folder='../templates')
 def get_db_connection():
     try:
         connection = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='',
-            database='laf'
+            host='pg0dj.h.filess.io',
+            user='laf2025_woodenpony',
+            password='832102598754a68e4a4352ae853102659aa5fe49',
+            database='laf2025_woodenpony',
+            port='3307'
         )
         return connection
     except mysql.connector.Error as e:
