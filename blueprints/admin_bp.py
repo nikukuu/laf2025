@@ -58,17 +58,27 @@ def admin_login():
             return redirect(url_for('admin.admin_login'))
 
         connection = get_db_connection()
-        cursor = connection.cursor()
-        cursor.execute("SELECT username, password FROM admin_info WHERE id = 1")
-        admin = cursor.fetchone()
-        cursor.close()
-        connection.close()
+        if connection is None:
+            flash('Database connection failed', 'danger')
+            return redirect(url_for('admin.admin_login'))
 
-        if admin and admin[0] == username and check_password_hash(admin[1], password):
-            session['admin_logged_in'] = True
-            return redirect(url_for('admin.admin_dashboard'))
-        else:
-            flash('Invalid username or password', 'danger')
+        try:
+            cursor = connection.cursor()
+            cursor.execute("SELECT username, password FROM admin_info WHERE id = 1")
+            admin = cursor.fetchone()
+            print("Admin record:", admin)  # Debug log
+
+            if admin and admin[0] == username and check_password_hash(admin[1], password):
+                session['admin_logged_in'] = True
+                return redirect(url_for('admin.admin_dashboard'))
+            else:
+                flash('Invalid username or password', 'danger')
+        except mysql.connector.Error as e:
+            print("Database error:", e)
+            flash('Database error', 'danger')
+        finally:
+            cursor.close()
+            connection.close()
 
     session['captcha_text'] = generate_captcha_text()
     return render_template('admin_login.html')
@@ -80,6 +90,7 @@ def captcha_image():
     captcha_text = session.get('captcha_text', '')
     data = image.generate(captcha_text)
     return send_file(data, mimetype='image/png')
+    
 @admin_bp.route('/logout')
 def logout():
     session.pop('admin_logged_in', None)
