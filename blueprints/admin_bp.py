@@ -16,7 +16,7 @@ def get_db_connection():
     try:
         connection = mysql.connector.connect(
             host='3y7pu.h.filess.io',
-            user='',
+            user='laf2025_couplewent',
             password='b4db8ac094f3b4f08e3e97af326b0ec0ed2bf217',
             database='laf2025_couplewent',
             port='3307'
