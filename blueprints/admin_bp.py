@@ -70,6 +70,7 @@ def admin_login():
 
             if admin and admin[0] == username and check_password_hash(admin[1], password):
                 session['admin_logged_in'] = True
+                session['admin_username'] = username
                 return redirect(url_for('admin.admin_dashboard'))
             else:
                 flash('Invalid username or password', 'danger')
