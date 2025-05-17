@@ -19,7 +19,7 @@ def get_db_connection():
             user='laf2025_couplewent',
             password='b4db8ac094f3b4f08e3e97af326b0ec0ed2bf217',
             database='laf2025_couplewent',
-            port='3307'
+            port='3306'
         )
         return connection
     except mysql.connector.Error as e:
